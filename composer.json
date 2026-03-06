@@ -1,0 +1,37 @@
+{
+  "name": "sweflow/module-email",
+  "description": "Módulo de envio de e-mails para a plataforma Sweflow API. Implementa a capability 'email-sender'.",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "sweflow",
+    "email",
+    "plugin",
+    "module",
+    "smtp",
+    "phpmailer"
+  ],
+  "authors": [
+    {
+      "name": "Sweflow Contributors",
+      "email": "contato@sweflow.com.br"
+    }
+  ],
+  "require": {
+    "php": ">=8.1",
+    "phpmailer/phpmailer": "^6.9"
+  },
+  "autoload": {
+    "psr-4": {
+      "SweflowModules\\Email\\": "src/"
+    }
+  },
+  "extra": {
+    "sweflow": {
+      "providers": [
+        "SweflowModules\\Email\\EmailServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable"
+}

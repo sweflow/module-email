@@ -1,0 +1,7 @@
+{
+  "name": "email",
+  "version": "1.0.0",
+  "provides": ["email-sender"],
+  "requires": [],
+  "conflicts": []
+}
