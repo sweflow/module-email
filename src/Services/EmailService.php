@@ -44,7 +44,7 @@ class EmailService implements EmailSenderInterface
         $mail->Subject = $subject;
         $mail->isHTML(true);
 
-        if ($logoUrl) {
+        if (!empty($logoUrl)) {
             $cid = 'logo_' . md5($logoUrl);
             $logoAlt = 'Logo';
             $logoName = basename(parse_url($logoUrl, PHP_URL_PATH) ?: 'logo.png');
@@ -57,7 +57,7 @@ class EmailService implements EmailSenderInterface
                         $mail->addStringEmbeddedImage($data, $cid, $logoName);
                         $embedded = true;
                     }
-                } else {
+                } elseif (file_exists($logoUrl)) {
                     $mail->addEmbeddedImage($logoUrl, $cid, $logoName);
                     $embedded = true;
                 }
@@ -67,6 +67,7 @@ class EmailService implements EmailSenderInterface
             if ($embedded) {
                 $body = "<div style='margin-bottom:16px'><img src='cid:{$cid}' alt='{$this->escape($logoAlt)}' style='max-height:64px;'></div>" . $body;
             } else {
+                // If it's a URL but we failed to embed (e.g. timeout), just link it
                 $body = "<div style='margin-bottom:16px'><img src='{$this->escapeAttr($logoUrl)}' alt='{$this->escape($logoAlt)}' style='max-height:64px;'></div>" . $body;
             }
         }
