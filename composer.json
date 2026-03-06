@@ -29,7 +29,7 @@
   "extra": {
     "sweflow": {
       "providers": [
-        "SweflowModules\\Email\\EmailServiceProvider"
+        "SweflowModules\\Email\\Providers\\EmailServiceProvider"
       ]
     }
   },
