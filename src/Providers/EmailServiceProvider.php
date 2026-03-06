@@ -1,5 +1,5 @@
 <?php
-namespace SweflowModules\Email;
+namespace SweflowModules\Email\Providers;
 
 use Src\Kernel\Contracts\ContainerInterface;
 use Src\Kernel\Contracts\ModuleProviderInterface;
@@ -9,6 +9,18 @@ use SweflowModules\Email\Services\EmailService;
 
 class EmailServiceProvider implements ModuleProviderInterface
 {
+    private string $name = 'Email';
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+
     public function registerRoutes(RouterInterface $router): void
     {
         $file = __DIR__ . '/../Routes/routes.php';
