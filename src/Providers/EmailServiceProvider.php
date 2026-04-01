@@ -40,9 +40,16 @@ class EmailServiceProvider implements ModuleProviderInterface
     public function describe(): array
     {
         return [
+            'name'        => $this->name,
+            'description' => 'Módulo de envio e histórico de e-mails via SMTP.',
+            'version'     => '1.0.0',
             'routes' => [
-                ['method' => 'POST', 'uri' => '/api/email/custom', 'tipo' => 'privada', 'protected' => true],
-                ['method' => 'POST', 'uri' => '/email/ping', 'tipo' => 'pública', 'protected' => false],
+                ['method' => 'POST',   'uri' => '/api/email/custom',                    'tipo' => 'privada', 'protected' => true],
+                ['method' => 'GET',    'uri' => '/api/email/history',                   'tipo' => 'privada', 'protected' => true],
+                ['method' => 'GET',    'uri' => '/api/email/history/{id}',              'tipo' => 'privada', 'protected' => true],
+                ['method' => 'DELETE', 'uri' => '/api/email/history/{id}',              'tipo' => 'privada', 'protected' => true],
+                ['method' => 'POST',   'uri' => '/api/email/history/{id}/resend',       'tipo' => 'privada', 'protected' => true],
+                ['method' => 'POST',   'uri' => '/email/ping',                          'tipo' => 'pública', 'protected' => false],
             ],
         ];
     }
