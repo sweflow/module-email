@@ -2,6 +2,7 @@
 
 namespace SweflowModules\Email\Controllers;
 
+use PDO;
 use Src\Kernel\Contracts\EmailSenderInterface;
 use Src\Kernel\Http\Request\Request;
 use Src\Kernel\Http\Response\Response;
@@ -12,14 +13,12 @@ class EmailApiController
 {
     private EmailSenderInterface $sender;
     private ?EmailHistory $history = null;
-    private string $storagePath;
 
-    public function __construct(?EmailSenderInterface $sender = null)
+    public function __construct(?EmailSenderInterface $sender = null, ?PDO $pdo = null)
     {
-        $this->storagePath = $this->resolveStorageDir();
-        $this->sender      = $sender ?? new EmailService();
+        $this->sender = $sender ?? new EmailService();
         try {
-            $this->history = new EmailHistory($this->storagePath);
+            $this->history = new EmailHistory($pdo);
         } catch (\Throwable $e) {
             error_log('[EmailModule] EmailHistory init failed: ' . $e->getMessage());
         }
@@ -63,18 +62,10 @@ class EmailApiController
     public function listarHistorico(Request $request): Response
     {
         if (!$this->history) {
-            return Response::json(['items' => [], 'warning' => 'Histórico indisponível (storage inacessível).']);
+            return Response::json(['items' => [], 'warning' => 'Histórico indisponível.']);
         }
-        $q     = trim(strtolower((string) ($request->query['q'] ?? '')));
-        $items = $this->history->all();
-        if ($q !== '') {
-            $items = array_values(array_filter($items, fn($item) =>
-                str_contains(strtolower($item['subject'] ?? ''), $q)
-                || str_contains(strtolower(json_encode($item['recipients'] ?? [])), $q)
-                || str_contains(strtolower($item['status'] ?? ''), $q)
-                || str_contains(strtolower($item['error'] ?? ''), $q)
-            ));
-        }
+        $q     = trim((string) ($request->query['q'] ?? ''));
+        $items = $this->history->all($q);
         return Response::json(['items' => $items]);
     }
 
@@ -191,7 +182,7 @@ class EmailApiController
         }
 
         if (!$this->history) {
-            error_log('[EmailModule] History not available. Storage: ' . $this->storagePath);
+            error_log('[EmailModule] History not available.');
             return $entry;
         }
 
@@ -220,22 +211,5 @@ class EmailApiController
             || str_contains($msg, 'connect')
             || str_contains($msg, 'timeout')
             || str_contains($msg, 'smtp');
-    }
-
-    private function resolveStorageDir(): string
-    {
-        $dir = __DIR__;
-        for ($i = 0; $i < 10; $i++) {
-            $candidate = $dir . DIRECTORY_SEPARATOR . 'storage';
-            if (is_dir($candidate)) {
-                return $candidate;
-            }
-            $parent = dirname($dir);
-            if ($parent === $dir) break;
-            $dir = $parent;
-        }
-        $fallback = dirname(__DIR__, 5) . DIRECTORY_SEPARATOR . 'storage';
-        error_log('[EmailModule] storageDir fallback: ' . $fallback);
-        return $fallback;
     }
 }
