@@ -77,7 +77,7 @@ class EmailService implements EmailSenderInterface
 
         $sent = $mail->send();
         if (!$sent) {
-            throw new \RuntimeException('Falha ao enviar e-mail.');
+            throw new \RuntimeException('Falha ao enviar e-mail: ' . $mail->ErrorInfo);
         }
     }
 
@@ -137,7 +137,7 @@ class EmailService implements EmailSenderInterface
         $debug = $this->boolEnv($_ENV['EMAIL_DEBUG'] ?? $_ENV['MAILER_DEBUG'] ?? 'false');
         $mail->SMTPDebug = $debug ? 2 : 0;
         $mail->Debugoutput = static function ($str, $level) {
-            error_log('[MAILER][' . $level . '] ' . $str);
+            error_log('[MAILER][' . $level . '] ' . trim((string) $str));
         };
 
         $fromEmail = $_ENV['EMAIL_FROM'] ?? $_ENV['MAILER_FROM_EMAIL'] ?? 'no-reply@example.com';
