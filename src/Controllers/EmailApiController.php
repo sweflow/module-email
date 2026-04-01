@@ -11,12 +11,16 @@ use SweflowModules\Email\Services\EmailService;
 class EmailApiController
 {
     private EmailSenderInterface $sender;
-    private EmailHistory $history;
+    private ?EmailHistory $history = null;
 
     public function __construct(?EmailSenderInterface $sender = null)
     {
-        $this->sender  = $sender ?? new EmailService();
-        $this->history = new EmailHistory($this->storageDir());
+        $this->sender = $sender ?? new EmailService();
+        try {
+            $this->history = new EmailHistory($this->storageDir());
+        } catch (\Throwable) {
+            // History unavailable — continue without it
+        }
     }
 
     // ── Envio ─────────────────────────────────────────────────────────────
@@ -24,7 +28,16 @@ class EmailApiController
     public function custom(Request $request): Response
     {
         if (!$this->moduleEnabled()) {
-            return Response::json(['error' => 'Módulo de e-mail não está instalado ou está desabilitado.'], 503);
+            $msg = 'Módulo de e-mail não está instalado ou está desabilitado.';
+            $this->saveHistory([
+                'subject'    => $request->body['subject'] ?? '(sem assunto)',
+                'recipients' => $request->body['recipients'] ?? [],
+                'html'       => $request->body['html'] ?? '',
+                'logo_url'   => null,
+                'status'     => 'falhou',
+                'error'      => $msg,
+            ]);
+            return Response::json(['error' => $msg, 'module_disabled' => true], 503);
         }
 
         $body       = $request->body ?? [];
@@ -35,6 +48,20 @@ class EmailApiController
 
         if (empty($recipients) || $subject === '' || $html === '') {
             return Response::json(['error' => 'Campos obrigatórios: recipients, subject, html.'], 422);
+        }
+
+        // Validate SMTP config before attempting send
+        $configError = $this->validateSmtpConfig();
+        if ($configError) {
+            $saved = $this->saveHistory([
+                'subject'    => $subject,
+                'recipients' => $recipients,
+                'html'       => $html,
+                'logo_url'   => $logoUrl,
+                'status'     => 'falhou',
+                'error'      => $configError,
+            ]);
+            return Response::json(['error' => $configError, 'id' => $saved['id'] ?? null], 503);
         }
 
         $entry = [
@@ -51,23 +78,39 @@ class EmailApiController
         } catch (\Throwable $e) {
             $entry['status'] = 'falhou';
             $entry['error']  = $e->getMessage();
-            $saved = $this->history->save($entry);
-            return Response::json(['error' => $e->getMessage(), 'id' => $saved['id']], 500);
+            $saved = $this->saveHistory($entry);
+            return Response::json(['error' => $e->getMessage(), 'id' => $saved['id'] ?? null], 500);
         }
 
-        $saved = $this->history->save($entry);
-        return Response::json(['message' => 'E-mail enviado com sucesso.', 'id' => $saved['id']]);
+        $saved = $this->saveHistory($entry);
+        return Response::json(['message' => 'E-mail enviado com sucesso.', 'id' => $saved['id'] ?? null]);
     }
 
     // ── Histórico ─────────────────────────────────────────────────────────
 
     public function listarHistorico(Request $request): Response
     {
-        return Response::json(['items' => $this->history->all()]);
+        if (!$this->history) {
+            return Response::json(['items' => []]);
+        }
+        $q     = trim(strtolower((string) ($request->query['q'] ?? '')));
+        $items = $this->history->all();
+        if ($q !== '') {
+            $items = array_values(array_filter($items, function ($item) use ($q) {
+                return str_contains(strtolower($item['subject'] ?? ''), $q)
+                    || str_contains(strtolower(json_encode($item['recipients'] ?? [])), $q)
+                    || str_contains(strtolower($item['status'] ?? ''), $q)
+                    || str_contains(strtolower($item['error'] ?? ''), $q);
+            }));
+        }
+        return Response::json(['items' => $items]);
     }
 
     public function detalheHistorico(Request $request, string $id): Response
     {
+        if (!$this->history) {
+            return Response::json(['error' => 'Histórico indisponível.'], 503);
+        }
         $entry = $this->history->find($id);
         if (!$entry) {
             return Response::json(['error' => 'Registro não encontrado.'], 404);
@@ -77,6 +120,9 @@ class EmailApiController
 
     public function deletarHistorico(Request $request, string $id): Response
     {
+        if (!$this->history) {
+            return Response::json(['error' => 'Histórico indisponível.'], 503);
+        }
         if (!$this->history->delete($id)) {
             return Response::json(['error' => 'Registro não encontrado.'], 404);
         }
@@ -85,25 +131,41 @@ class EmailApiController
 
     public function reenviar(Request $request, string $id): Response
     {
+        if (!$this->history) {
+            return Response::json(['error' => 'Histórico indisponível.'], 503);
+        }
+
         $entry = $this->history->find($id);
         if (!$entry) {
             return Response::json(['error' => 'Registro não encontrado.'], 404);
         }
 
         if (!$this->moduleEnabled()) {
-            $this->history->save([
+            $msg = 'Módulo de e-mail não está instalado ou está desabilitado.';
+            $this->saveHistory([
                 'subject'     => $entry['subject'],
                 'recipients'  => $entry['recipients'],
                 'html'        => $entry['html'],
                 'logo_url'    => $entry['logo_url'] ?? null,
                 'status'      => 'falhou',
-                'error'       => 'Módulo de e-mail não está instalado ou está desabilitado.',
+                'error'       => $msg,
                 'resent_from' => $id,
             ]);
-            return Response::json([
-                'error'          => 'Módulo de e-mail não está instalado ou está desabilitado.',
-                'module_disabled' => true,
-            ], 503);
+            return Response::json(['error' => $msg, 'module_disabled' => true], 503);
+        }
+
+        $configError = $this->validateSmtpConfig();
+        if ($configError) {
+            $saved = $this->saveHistory([
+                'subject'     => $entry['subject'],
+                'recipients'  => $entry['recipients'],
+                'html'        => $entry['html'],
+                'logo_url'    => $entry['logo_url'] ?? null,
+                'status'      => 'falhou',
+                'error'       => $configError,
+                'resent_from' => $id,
+            ]);
+            return Response::json(['error' => $configError, 'id' => $saved['id'] ?? null], 503);
         }
 
         try {
@@ -113,7 +175,7 @@ class EmailApiController
                 $entry['html'],
                 $entry['logo_url'] ?? null
             );
-            $this->history->save([
+            $this->saveHistory([
                 'subject'     => $entry['subject'],
                 'recipients'  => $entry['recipients'],
                 'html'        => $entry['html'],
@@ -124,7 +186,7 @@ class EmailApiController
             ]);
             return Response::json(['message' => 'E-mail reenviado com sucesso.']);
         } catch (\Throwable $e) {
-            $this->history->save([
+            $this->saveHistory([
                 'subject'     => $entry['subject'],
                 'recipients'  => $entry['recipients'],
                 'html'        => $entry['html'],
@@ -139,25 +201,46 @@ class EmailApiController
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
+    private function saveHistory(array $entry): array
+    {
+        if (!$this->history) {
+            return $entry;
+        }
+        try {
+            return $this->history->save($entry);
+        } catch (\Throwable) {
+            return $entry;
+        }
+    }
+
+    private function validateSmtpConfig(): ?string
+    {
+        $host = trim((string) ($_ENV['EMAIL_HOST'] ?? $_ENV['MAILER_HOST'] ?? ''));
+        $user = trim((string) ($_ENV['EMAIL_USERNAME'] ?? $_ENV['MAILER_USERNAME'] ?? ''));
+        if ($host === '') {
+            return 'SMTP não configurado: MAILER_HOST está vazio no .env.';
+        }
+        if ($user === '') {
+            return 'SMTP não configurado: MAILER_USERNAME está vazio no .env.';
+        }
+        return null;
+    }
+
     private function moduleEnabled(): bool
     {
         $stateFile = $this->storageDir() . DIRECTORY_SEPARATOR . 'modules_state.json';
         if (!is_file($stateFile)) {
-            // No state file = module system not initialized, allow by default
-            return true;
+            return true; // no state file = fresh install, allow
         }
         $state   = json_decode((string) file_get_contents($stateFile), true) ?? [];
         $enabled = $state['Email'] ?? $state['email'] ?? null;
-        // null = never registered in state (fresh install), treat as enabled
         return $enabled !== false;
     }
 
     private function storageDir(): string
     {
-        // Works whether installed as vendor package or in src/Modules/Email
-        // Walks up from src/Controllers/ to find the project root (where storage/ lives)
         $dir = __DIR__;
-        for ($i = 0; $i < 6; $i++) {
+        for ($i = 0; $i < 8; $i++) {
             if (is_dir($dir . DIRECTORY_SEPARATOR . 'storage')) {
                 return $dir . DIRECTORY_SEPARATOR . 'storage';
             }
@@ -165,7 +248,6 @@ class EmailApiController
             if ($parent === $dir) break;
             $dir = $parent;
         }
-        // Fallback: storage next to vendor/
         return dirname(__DIR__, 4) . DIRECTORY_SEPARATOR . 'storage';
     }
 }
