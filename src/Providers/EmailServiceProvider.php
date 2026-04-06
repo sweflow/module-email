@@ -56,4 +56,9 @@ class EmailServiceProvider implements ModuleProviderInterface
     public function onEnable(): void {}
     public function onDisable(): void {}
     public function onUninstall(): void {}
+
+    public function preferredConnection(): string
+    {
+        return 'core';
+    }
 }
