@@ -31,6 +31,11 @@
       "providers": [
         "SweflowModules\\Email\\Providers\\EmailServiceProvider"
       ]
+    },
+    "vupi.us": {
+      "providers": [
+        "SweflowModules\\Email\\Providers\\EmailServiceProvider"
+      ]
     }
   },
   "minimum-stability": "stable"
