@@ -17,6 +17,16 @@ class EmailApiController
     public function __construct(?EmailSenderInterface $sender = null, ?PDO $pdo = null)
     {
         $this->sender = $sender ?? new EmailService();
+
+        // Se PDO não foi injetado, tenta conectar diretamente via PdoFactory
+        if ($pdo === null) {
+            try {
+                $pdo = \Src\Kernel\Database\PdoFactory::fromEnv('DB');
+            } catch (\Throwable $e) {
+                error_log('[EmailModule] PDO fallback failed: ' . $e->getMessage());
+            }
+        }
+
         try {
             $this->history = new EmailHistory($pdo);
         } catch (\Throwable $e) {
