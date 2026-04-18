@@ -18,10 +18,11 @@ class EmailApiController
     {
         $this->sender = $sender ?? new EmailService();
 
-        // Se PDO não foi injetado, tenta conectar diretamente via PdoFactory
+        // Se PDO não foi injetado, tenta conectar via ModuleConnectionResolver
+        // respeitando o connection.php do módulo (core ou modules)
         if ($pdo === null) {
             try {
-                $pdo = \Src\Kernel\Database\PdoFactory::fromEnv('DB');
+                $pdo = \Src\Kernel\Database\ModuleConnectionResolver::forModule('Email');
             } catch (\Throwable $e) {
                 error_log('[EmailModule] PDO fallback failed: ' . $e->getMessage());
             }
