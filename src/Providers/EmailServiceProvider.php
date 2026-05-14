@@ -1,12 +1,12 @@
 <?php
 
-namespace SweflowModules\Email\Providers;
+namespace Src\Modules\Email\Providers;
 
 use Src\Kernel\Contracts\ContainerInterface;
 use Src\Kernel\Contracts\ModuleProviderInterface;
 use Src\Kernel\Contracts\RouterInterface;
 use Src\Kernel\Contracts\EmailSenderInterface;
-use SweflowModules\Email\Services\EmailService;
+use Src\Modules\Email\Services\EmailService;
 
 class EmailServiceProvider implements ModuleProviderInterface
 {

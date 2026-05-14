@@ -1,5 +1,5 @@
 <?php
-namespace SweflowModules\Email\Services;
+namespace Src\Modules\Email\Services;
 
 use PHPMailer\PHPMailer\Exception as MailException;
 use PHPMailer\PHPMailer\PHPMailer;

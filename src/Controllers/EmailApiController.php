@@ -1,13 +1,13 @@
 <?php
 
-namespace SweflowModules\Email\Controllers;
+namespace Src\Modules\Email\Controllers;
 
 use PDO;
 use Src\Kernel\Contracts\EmailSenderInterface;
 use Src\Kernel\Http\Request\Request;
 use Src\Kernel\Http\Response\Response;
 use Src\Kernel\Support\EmailHistory;
-use SweflowModules\Email\Services\EmailService;
+use Src\Modules\Email\Services\EmailService;
 
 class EmailApiController
 {

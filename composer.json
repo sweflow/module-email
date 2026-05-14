@@ -23,18 +23,18 @@
   },
   "autoload": {
     "psr-4": {
-      "SweflowModules\\Email\\": "src/"
+      "Src\\Modules\\Email\\": "src/"
     }
   },
   "extra": {
     "sweflow": {
       "providers": [
-        "SweflowModules\\Email\\Providers\\EmailServiceProvider"
+        "Src\\Modules\\Email\\Providers\\EmailServiceProvider"
       ]
     },
     "vupi.us": {
       "providers": [
-        "SweflowModules\\Email\\Providers\\EmailServiceProvider"
+        "Src\\Modules\\Email\\Providers\\EmailServiceProvider"
       ]
     }
   },

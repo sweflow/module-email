@@ -3,7 +3,7 @@
 use Src\Kernel\Middlewares\AuthHybridMiddleware;
 use Src\Kernel\Middlewares\AdminOnlyMiddleware;
 use Src\Kernel\Http\Response\Response;
-use SweflowModules\Email\Controllers\EmailApiController;
+use Src\Modules\Email\Controllers\EmailApiController;
 
 /** @var \Src\Kernel\Contracts\RouterInterface $router */
 
